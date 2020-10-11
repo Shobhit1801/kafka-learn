@@ -17,6 +17,8 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -27,11 +29,11 @@ public class TwitterProducer {
     BlockingQueue<String> msgQueue = new LinkedBlockingQueue<String>(100000);
     final Logger logger = LoggerFactory.getLogger(TwitterProducer.class);
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, IOException {
         new TwitterProducer().run();
     }
 
-    public void run() throws InterruptedException {
+    public void run() throws InterruptedException, IOException {
         // get a twitter client
         Client client = getTwitterClient(msgQueue);
 
@@ -57,8 +59,7 @@ public class TwitterProducer {
                                 "Timestamp: " + recordMetadata.timestamp());
                     }
                     else {
-                        logger.error("Some error occured:",e);
-
+                        logger.error("Some error occurred:",e);
                     }
                 }
             });
@@ -70,7 +71,14 @@ public class TwitterProducer {
 
     }
 
-    public Client getTwitterClient(BlockingQueue<String> msgQueue) {
+    public Properties getTwitterAPIKeys() throws IOException {
+        Properties prop=new Properties();
+        FileInputStream ip= new FileInputStream("C:/kafka-learn/twitter_config.properties");
+        prop.load(ip);
+        return prop;
+    }
+
+    public Client getTwitterClient(BlockingQueue<String> msgQueue) throws IOException {
         /** Set up your blocking queues: Be sure to size these properly based on expected TPS of your stream */
 
         BlockingQueue<Event> eventQueue = new LinkedBlockingQueue<Event>(1000);
@@ -80,12 +88,15 @@ public class TwitterProducer {
         StatusesFilterEndpoint hosebirdEndpoint = new StatusesFilterEndpoint();
         // Optional: set up some followings and track terms
         //List<Long> followings = Lists.newArrayList(5678L, 566888L);
-        List<String> terms = Lists.newArrayList("twitter", "kafka", "api");
+        List<String> terms = Lists.newArrayList("india", "politics", "cricket");
         //hosebirdEndpoint.followings(followings);
         hosebirdEndpoint.trackTerms(terms);
 
+        // fetch twitter config properties
+        Properties twitterConfigProps = getTwitterAPIKeys();
+
         // These secrets should be read from a config file
-        Authentication hosebirdAuth = new OAuth1("consumerKey", "consumerSecret", "token", "tokenSecret" );
+        Authentication hosebirdAuth = new OAuth1(twitterConfigProps.getProperty("APIKey"), twitterConfigProps.getProperty("APISecretKey"), twitterConfigProps.getProperty("AccessToken"), twitterConfigProps.getProperty("AccessSecretToken") );
 
         Logger logger = LoggerFactory.getLogger(TwitterTest.class.getName());
 
@@ -105,13 +116,24 @@ public class TwitterProducer {
     public KafkaProducer<String,String> getKafkaProducer() {
         String bootstrapServers = "127.0.0.1:9092";
 
-        //create Producer properties
+        // create Producer properties
         Properties properties = new Properties();
         properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        //create producer
+        // create safe producer
+        properties.setProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+        properties.setProperty(ProducerConfig.ACKS_CONFIG, "all");
+        properties.setProperty(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE));
+        properties.setProperty(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");
+
+        // batching and compression (inc throughput but dec latency)
+        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "20");
+        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32*1024)); // 32 Kb
+
+        // create producer
         KafkaProducer<String, String> producer = new KafkaProducer<String, String>(properties);
 
         logger.info("Exit producer func");
