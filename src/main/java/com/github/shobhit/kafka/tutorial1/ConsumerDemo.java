@@ -29,7 +29,7 @@ public class ConsumerDemo {
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(properties);
-        consumer.subscribe(Collections.singleton(topic));
+        consumer.subscribe(Collections.singleton(topic_id));
 
         while(true) {
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
