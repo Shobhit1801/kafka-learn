@@ -41,10 +41,10 @@ public class TwitterProducer {
         KafkaProducer<String, String> producer = getKafkaProducer();
 
         while(!client.isDone()) {
-            String topic = "first_topic";
+            String topic_id = "first_topic";
             String value = msgQueue.take();
             //create a producer record
-            final ProducerRecord<String, String> record = new ProducerRecord<String, String>(topic, value);
+            final ProducerRecord<String, String> record = new ProducerRecord<String, String>(topic_id, value);
 
             //send data
             producer.send(record, new Callback() {
