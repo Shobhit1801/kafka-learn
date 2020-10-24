@@ -15,10 +15,11 @@ import java.util.Properties;
 public class ConsumerDemo {
     public static void main( String[] args) {
         Logger logger = LoggerFactory.getLogger(ConsumerDemo.class.getName());
-
+        
+        //Added configs for the broker
         String bootstrapServer = "127.0.0.1:9092";
         String group_id = "my-fourth-app";
-        String topic = "first_topic";
+        String topic_id = "first_topic";
 
         Properties properties = new Properties();
         properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
@@ -28,7 +29,7 @@ public class ConsumerDemo {
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(properties);
-        consumer.subscribe(Collections.singleton(topic));
+        consumer.subscribe(Collections.singleton(topic_id));
 
         while(true) {
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
